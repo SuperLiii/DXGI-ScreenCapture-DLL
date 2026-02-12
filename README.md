@@ -160,11 +160,4 @@ DXGI-ScreenCapture-DLL/
    - Zlib/LZ4 压缩
    - 帧率动态调整
 
-## 作者信息
 
-- 作者：windpiaoxue
-- 联系方式：2977493715
-
-## License
-
-请遵守相关开源协议。
