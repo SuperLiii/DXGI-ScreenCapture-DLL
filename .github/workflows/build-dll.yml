@@ -11,27 +11,27 @@ jobs:
     runs-on: windows-latest
     
     steps:
-      # 1. 检出代码
+      # 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. 配置 MSBuild 环境
+      # 2. Setup MSBuild
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: x64
 
-      # 【关键调试】打印当前目录和文件结构（必看日志）
+      # 【Debug】Print directory structure (NO CHINESE!)
       - name: Print directory and files
         run: |
-          Write-Host "当前工作目录：$PWD"
-          Write-Host "=== 仓库根目录所有文件/文件夹 ==="
+          Write-Host "Current working directory: $PWD"
+          Write-Host "=== All files/folders in root ==="
           dir
-          Write-Host "=== MirrorScreen 文件夹内文件 ==="
+          Write-Host "=== Files in MirrorScreen folder ==="
           dir .\MirrorScreen\
         shell: powershell
 
-      # 3. 编译 DLL（修正路径，去掉多余的 github.workspace）
+      # 3. Build DLL (fixed path + no chinese)
       - name: Build DLL with MSBuild
         run: |
           msbuild .\MirrorScreen\MirrorScreen.vcxproj `
@@ -42,7 +42,7 @@ jobs:
             /p:TargetExt=.dll
         shell: powershell
 
-      # 4. 上传编译产物
+      # 4. Upload artifact
       - name: Upload DLL Artifact
         uses: actions/upload-artifact@v4
         with:
