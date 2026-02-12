@@ -47,6 +47,7 @@ extern "C" {
 	API_DECLSPEC int          dxgi_get_dirty_rects(void *, DirtyRect *, int);   // 获取脏矩形数据
 	API_DECLSPEC int          dxgi_get_dirty_region_size(void *);               // 获取脏区域总大小
 	API_DECLSPEC FrameStatus  dxgi_copy_dirty_regions(void *, char *, int);     // 仅复制脏区域数据
+	API_DECLSPEC FrameStatus  dxgi_copy_acquired_frame(void *, char *);         // 复制已acquired的完整帧
 #ifdef __cplusplus
 }
 #endif

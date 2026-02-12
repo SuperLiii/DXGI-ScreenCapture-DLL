@@ -400,3 +400,55 @@ FrameStatus dxgi_copy_dirty_regions(void *pDxgi, char *pOut, int bufferSize) {
     return (mappedResource.pData != nullptr) ? FS_OK : FS_ERROR;
 }
 
+// 复制已acquired的完整帧
+FrameStatus dxgi_copy_acquired_frame(void *pDxgi, char *pOut) {
+    DxgiInfo *pDxgiInfo = reinterpret_cast<DxgiInfo *>(pDxgi);
+    
+    if (!pDxgiInfo->m_bFrameAcquired || !pDxgiInfo->m_pAcquiredDesktopImage) {
+        return FS_ERROR;
+    }
+    
+    // 创建临时纹理用于CPU读取
+    D3D11_TEXTURE2D_DESC frameDescriptor;
+    pDxgiInfo->m_pAcquiredDesktopImage->GetDesc(&frameDescriptor);
+    
+    ID3D11Texture2D *hStagingTexture = nullptr;
+    frameDescriptor.Usage = D3D11_USAGE_STAGING;
+    frameDescriptor.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    frameDescriptor.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    frameDescriptor.BindFlags = 0;
+    frameDescriptor.MiscFlags = 0;
+    frameDescriptor.MipLevels = 1;
+    frameDescriptor.ArraySize = 1;
+    frameDescriptor.SampleDesc.Count = 1;
+    
+    HRESULT hResult = pDxgiInfo->m_pDevice->CreateTexture2D(&frameDescriptor, nullptr, &hStagingTexture);
+    if (FAILED(hResult)) {
+        return FS_ERROR;
+    }
+    
+    // 复制纹理到staging buffer
+    pDxgiInfo->m_pContext->CopyResource(hStagingTexture, pDxgiInfo->m_pAcquiredDesktopImage);
+    
+    // 映射纹理
+    D3D11_MAPPED_SUBRESOURCE mappedResource = {0};
+    hResult = pDxgiInfo->m_pContext->Map(hStagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
+    
+    if (SUCCEEDED(hResult) && mappedResource.pData != nullptr) {
+        // 复制完整帧数据
+        for (int y = 0; y < pDxgiInfo->m_nHeight; ++y) {
+            memcpy(
+                pOut + y * pDxgiInfo->m_nWidth * 4,
+                static_cast<const char*>(mappedResource.pData) + y * mappedResource.RowPitch,
+                pDxgiInfo->m_nWidth * 4);
+        }
+        
+        pDxgiInfo->m_pContext->Unmap(hStagingTexture, 0);
+    }
+    
+    RESET_OBJECT(hStagingTexture);
+    
+    return (mappedResource.pData != nullptr) ? FS_OK : FS_ERROR;
+}
+
+
