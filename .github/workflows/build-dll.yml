@@ -1,0 +1,36 @@
+name: Build DXGI Screen Capture DLL
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - name: Build DLL with MSBuild
+        working-directory: ${{ github.workspace }}/MirrorScreen
+        run: |
+          msbuild MirrorScreen.vcxproj `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:OutDir=../build/ `
+            /p:TargetName=DxgiGrab `
+            /p:TargetExt=.dll
+
+      - name: Upload DLL Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DxgiGrab-DLL-x64
+          path: ${{ github.workspace }}/build/
