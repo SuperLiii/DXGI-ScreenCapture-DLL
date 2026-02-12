@@ -11,24 +11,37 @@ jobs:
     runs-on: windows-latest
     
     steps:
+      # 1. 检出代码
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2. 配置 MSBuild 环境
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: x64
 
-      - name: Build DLL with MSBuild
-        working-directory: ${{ github.workspace }}/MirrorScreen
+      # 【新增】打印目录结构（帮你验证路径，可选但建议保留）
+      - name: Print directory structure (debug)
         run: |
-          msbuild MirrorScreen.vcxproj `
+          Write-Host "=== 仓库根目录文件列表 ==="
+          dir ${{ github.workspace }}
+          Write-Host "=== MirrorScreen 文件夹内文件列表 ==="
+          dir ${{ github.workspace }}/MirrorScreen
+        shell: powershell
+
+      # 3. 编译 DLL（修正命令书写格式，确保路径正确）
+      - name: Build DLL with MSBuild
+        run: |
+          msbuild "${{ github.workspace }}\MirrorScreen\MirrorScreen.vcxproj" `
             /p:Configuration=Release `
             /p:Platform=x64 `
-            /p:OutDir=../build/ `
+            /p:OutDir="${{ github.workspace }}\build\" `
             /p:TargetName=DxgiGrab `
             /p:TargetExt=.dll
+        shell: powershell
 
+      # 4. 上传编译产物
       - name: Upload DLL Artifact
         uses: actions/upload-artifact@v4
         with:
