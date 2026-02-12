@@ -1,40 +1,95 @@
+# 工作流名称：简洁且明确
 name: Build DXGI Screen Capture DLL
 
+# 触发条件：仅在main分支有代码推送/PR时触发，避免不必要的编译
 on:
   push:
     branches: [ main ]
+    # 仅监控代码/项目文件变更，减少无效触发
+    paths:
+      - 'MirrorScreen/**'
+      - '.github/workflows/build-dll.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'MirrorScreen/**'
+      - '.github/workflows/build-dll.yml'
 
+# 定义构建任务
 jobs:
-  build-windows:
+  build-windows-dll:
+    # 任务名称：更语义化
+    name: Build 64-bit DLL (Windows)
     runs-on: windows-latest
-    
-    steps:
-      # 1. 检出代码
-      - name: Checkout code
-        uses: actions/checkout@v4
+    # 设置默认shell为PowerShell，简化命令书写
+    defaults:
+      run:
+        shell: powershell
 
-      # 2. 配置 MSBuild 环境
-      - name: Setup MSBuild
+    steps:
+      # 1. 检出代码：指定深度为1，提升检出速度
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # 2. 配置MSBuild：指定VS版本，提升兼容性
+      - name: Setup MSBuild environment
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: x64
+          vs-version: '17.0' # 匹配GitHub虚拟机预装的VS2022版本
 
-      # 3. 编译 DLL（修正为双层 MirrorScreen 路径）
-      - name: Build DLL with MSBuild
+      # 3. 打印关键路径（调试用，可选但建议保留）
+      - name: Debug - Print project path and structure
         run: |
-          msbuild .\MirrorScreen\MirrorScreen\MirrorScreen.vcxproj `
+          Write-Host "=== Current Working Directory ==="
+          Write-Host $PWD.Path
+          Write-Host "=== Project File Path ==="
+          $projPath = Join-Path -Path $PWD.Path -ChildPath "MirrorScreen\MirrorScreen\MirrorScreen.vcxproj"
+          Write-Host "Project File: $projPath"
+          Write-Host "=== Project File Exists? ==="
+          Test-Path $projPath # 返回True则文件存在
+
+      # 4. 编译DLL：使用绝对路径，避免相对路径歧义
+      - name: Build Release DLL (x64)
+        run: |
+          # 定义绝对路径变量，提升可读性
+          $projPath = Join-Path -Path $PWD.Path -ChildPath "MirrorScreen\MirrorScreen\MirrorScreen.vcxproj"
+          $outputDir = Join-Path -Path $PWD.Path -ChildPath "build"
+
+          # 创建输出目录（确保目录存在，避免编译时找不到路径）
+          if (-not (Test-Path $outputDir)) {
+              New-Item -ItemType Directory -Path $outputDir | Out-Null
+              Write-Host "Created output directory: $outputDir"
+          }
+
+          # 执行MSBuild编译
+          msbuild $projPath `
+            /t:Build ` # 显式指定Build目标
             /p:Configuration=Release `
             /p:Platform=x64 `
-            /p:OutDir=.\build\ `
+            /p:OutDir="$outputDir\" ` # 绝对输出路径
             /p:TargetName=DxgiGrab `
-            /p:TargetExt=.dll
-        shell: powershell
+            /p:TargetExt=.dll `
+            /verbosity:minimal # 简化日志输出，只显示关键信息
 
-      # 4. 上传编译产物
-      - name: Upload DLL Artifact
+      # 5. 验证产物是否生成（调试用）
+      - name: Debug - Check build output
+        run: |
+          $outputDir = Join-Path -Path $PWD.Path -ChildPath "build"
+          Write-Host "=== Build Output Directory Content ==="
+          if (Test-Path $outputDir) {
+              dir $outputDir | Format-Table Name, Length, LastWriteTime
+          } else {
+              Write-Host "Output directory does not exist!"
+          }
+
+      # 6. 上传产物：使用绝对路径，确保能找到文件
+      - name: Upload DLL artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DxgiGrab-DLL-x64
-          path: .\build\
+          name: DxgiGrab-DLL-x64-Release
+          path: ${{ github.workspace }}\build\
+          # 只保留最新的1个产物，节省存储空间
+          retention-days: 7
