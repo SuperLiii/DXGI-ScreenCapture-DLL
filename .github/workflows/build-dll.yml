@@ -21,22 +21,23 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      # 【新增】打印目录结构（帮你验证路径，可选但建议保留）
-      - name: Print directory structure (debug)
+      # 【关键调试】打印当前目录和文件结构（必看日志）
+      - name: Print directory and files
         run: |
-          Write-Host "=== 仓库根目录文件列表 ==="
-          dir ${{ github.workspace }}
-          Write-Host "=== MirrorScreen 文件夹内文件列表 ==="
-          dir ${{ github.workspace }}/MirrorScreen
+          Write-Host "当前工作目录：$PWD"
+          Write-Host "=== 仓库根目录所有文件/文件夹 ==="
+          dir
+          Write-Host "=== MirrorScreen 文件夹内文件 ==="
+          dir .\MirrorScreen\
         shell: powershell
 
-      # 3. 编译 DLL（修正命令书写格式，确保路径正确）
+      # 3. 编译 DLL（修正路径，去掉多余的 github.workspace）
       - name: Build DLL with MSBuild
         run: |
-          msbuild "${{ github.workspace }}\MirrorScreen\MirrorScreen.vcxproj" `
+          msbuild .\MirrorScreen\MirrorScreen.vcxproj `
             /p:Configuration=Release `
             /p:Platform=x64 `
-            /p:OutDir="${{ github.workspace }}\build\" `
+            /p:OutDir=.\build\ `
             /p:TargetName=DxgiGrab `
             /p:TargetExt=.dll
         shell: powershell
@@ -46,4 +47,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DxgiGrab-DLL-x64
-          path: ${{ github.workspace }}/build/
+          path: .\build\
